@@ -1,54 +1,58 @@
 <template>
-  <div id="dwv">
-    <md-progress-bar
-      md-mode="determinate"
-      :md-value="loadProgress"
-    ></md-progress-bar>
+    <div id="dwv">
+    <el-progress
+      :show-text="false"
+      :percentage="loadProgress"
+    ></el-progress>
     <div class="button-row">
       <!-- action buttons -->
-      <md-button
-        class="md-icon-button md-raised md-primary"
+      <el-button
+        type="primary"
         v-for="tool in toolNames"
         :key="tool"
         :id="tool"
         :title="tool"
         v-on:click="onChangeTool(tool)"
         :disabled="!dataLoaded || !canRunTool(tool)"
-        ><md-icon>{{ getToolIcon(tool)}}</md-icon>
-      </md-button>
+        :icon="getToolIcon(tool)"
+        circle>
+      </el-button>
 
-      <md-button
-        class="md-icon-button md-raised md-primary"
+      <el-button
+        type="primary"
         title="Reset"
         v-on:click="onReset()"
         :disabled="!dataLoaded"
-        ><md-icon>refresh</md-icon>
-      </md-button>
+        icon="el-icon-refresh-right"
+        circle/>
 
-      <md-button
-        class="md-icon-button md-raised md-primary"
+      <el-button
+        type="primary"
         title="Toggle Orientation"
         v-on:click="toggleOrientation()"
         :disabled="!dataLoaded"
-        ><md-icon>cameraswitch</md-icon>
-      </md-button>
+        icon="el-icon-camera"
+        circle/>
 
-      <md-button
-        class="md-icon-button md-raised md-primary"
+      <el-button
+        type="primary"
         title="Tags"
         v-on:click="showDicomTags = true"
         :disabled="!dataLoaded"
-        ><md-icon>library_books</md-icon>
-      </md-button>
+        icon="el-icon-document"
+        circle/>
       <!-- dicom tags dialog-->
-      <md-dialog :md-active.sync="showDicomTags">
+      <el-dialog
+        :show-close="false"
+        :visible.sync="showDicomTags">
         <tagsTable :tagsData="metaData" />
-      </md-dialog>
+      </el-dialog>
     </div>
+
     <div id="layerGroup0" class="layerGroup">
       <div id="dropBox"></div>
     </div>
-    <div class="legend md-caption">
+    <!-- <div class="legend md-caption">
       <p>
         Powered by
         <a href="https://github.com/ivmartel/dwv" title="dwv on github">dwv</a>
@@ -56,18 +60,28 @@
         <a href="https://github.com/vuejs/vue" title="vue on github">Vue.js</a>
         {{ versions.vue }}
       </p>
-    </div>
+    </div> -->
   </div>
 </template>
 
 <script>
+
 // import
+import axios from 'axios'
 import Vue from 'vue'
-import MdButton from 'vue-material'
+import {Progress, Button, Dialog} from 'element-ui'
+import 'element-ui/lib/theme-chalk/index.css'
+import lang from 'element-ui/lib/locale/lang/en'
+import locale from 'element-ui/lib/locale'
+
+locale.use(lang)
+Vue.use(Progress)
+Vue.use(Button)
+Vue.use(Dialog)
+
+// import
 import dwv from 'dwv'
 import tagsTable from './tags-table'
-
-Vue.use(MdButton)
 
 // gui overrides
 
@@ -109,10 +123,17 @@ export default {
       dropboxDivId: 'dropBox',
       dropboxClassName: 'dropBox',
       borderClassName: 'dropBoxBorder',
-      hoverClassName: 'hover'
+      hoverClassName: 'hover',
+      folderPath: null,
+      dicom: []
     }
     res.toolNames = Object.keys(res.tools)
     return res
+  },
+  created() {
+    if (window.location.pathname !== '/') {
+      this.folderPath = window.location.pathname
+    }
   },
   mounted() {
     // create app
@@ -190,23 +211,40 @@ export default {
     // handle window resize
     window.addEventListener('resize', this.dwvApp.onResize)
 
-    // setup drop box
-    this.setupDropbox()
+    if (this.folderPath) {
+      this.onUrl()
+    } else {
+      // setup drop box
+      this.setupDropbox()
+    }
 
     // possible load from location
     dwv.utils.loadFromUri(window.location.href, this.dwvApp)
   },
   methods: {
+    getDICOMFile: async function () {
+      const queryPath = process.env.VUE_APP_QUERY +
+                        '/collection'
+      await axios.post(queryPath, {path: this.folderPath})
+        .then((res)=> {
+          res.data.files.forEach((element) => {
+            const dicomPath = process.env.VUE_APP_QUERY +
+                        '/data/preview' +
+                        element.path
+            this.dicom.push(dicomPath)
+          })
+        })
+    },
     getToolIcon: function (tool) {
       var res
       if (tool === 'Scroll') {
-        res = 'menu'
+        res = 'el-icon-menu'
       } else if (tool === 'ZoomAndPan') {
-        res = 'search'
+        res = 'el-icon-search'
       } else if (tool === 'WindowLevel') {
-        res = 'contrast'
+        res = 'el-icon-s-operation'
       } else if (tool === 'Draw') {
-        res = 'straighten'
+        res = 'el-icon-edit'
       }
       return res
     },
@@ -304,6 +342,12 @@ export default {
       // load files
       this.dwvApp.loadFiles(event.dataTransfer.files)
     },
+    onUrl: async function () {
+      if (this.folderPath) {
+        await this.getDICOMFile()
+        this.dwvApp.loadURLs(this.dicom)
+      }
+    },
     showDropbox: function (show) {
       const box = document.getElementById(this.dropboxDivId)
       if (!box) {
@@ -398,6 +442,11 @@ export default {
   border: 5px dashed rgba(68, 138, 255, 0.38); }
 .dropBoxBorder.hover {
   border: 5px dashed var(--md-theme-default-primary); }
+
+/* element ui */
+::v-deep .el-dialog__header {
+  padding: 0;
+}
 </style>
 <!-- non "scoped" style -->
 <style>
