@@ -33,34 +33,15 @@
         :disabled="!dataLoaded"
         icon="el-icon-camera"
         circle/>
-
-      <el-button
-        type="primary"
-        title="Tags"
-        v-on:click="showDicomTags = true"
-        :disabled="!dataLoaded"
-        icon="el-icon-document"
-        circle/>
-      <!-- dicom tags dialog-->
-      <el-dialog
-        :show-close="false"
-        :visible.sync="showDicomTags">
-        <tagsTable :tagsData="metaData" />
-      </el-dialog>
+      <!-- dicom tags table-->
+      <tagsTable
+        v-if="metaData !== null"
+        :tagsData="metaData" />
     </div>
 
     <div id="layerGroup0" class="layerGroup">
       <div id="dropBox"></div>
     </div>
-    <!-- <div class="legend md-caption">
-      <p>
-        Powered by
-        <a href="https://github.com/ivmartel/dwv" title="dwv on github">dwv</a>
-        {{ versions.dwv }} and
-        <a href="https://github.com/vuejs/vue" title="vue on github">Vue.js</a>
-        {{ versions.vue }}
-      </p>
-    </div> -->
   </div>
 </template>
 
@@ -100,10 +81,6 @@ export default {
   },
   data: function () {
     let res = {
-      versions: {
-        dwv: dwv.getVersion(),
-        vue: Vue.version
-      },
       dwvApp: null,
       tools: {
         Scroll: {},
@@ -119,7 +96,6 @@ export default {
       dataLoaded: false,
       metaData: null,
       orientation: undefined,
-      showDicomTags: false,
       dropboxDivId: 'dropBox',
       dropboxClassName: 'dropBox',
       borderClassName: 'dropBoxBorder',
@@ -415,7 +391,7 @@ export default {
   margin: 2px;
 }
 #dwv button.active{
-  background-color: var(--md-theme-default-accent);
+  /* background-color: var(--md-theme-default-accent); */
 }
 
 /* Layers */
@@ -439,9 +415,11 @@ export default {
   width: 50%; height: 75%;
 }
 .dropBoxBorder {
-  border: 5px dashed rgba(68, 138, 255, 0.38); }
+  border: 5px dashed rgba(68, 138, 255, 0.38);
+}
 .dropBoxBorder.hover {
-  border: 5px dashed var(--md-theme-default-primary); }
+  /* border: 5px dashed var(--md-theme-default-primary); */
+}
 
 /* element ui */
 ::v-deep .el-dialog__header {
