@@ -1,9 +1,9 @@
 <template>
-    <div id="dwv">
+  <div id="dwv">
     <el-progress
       :show-text="false"
       :percentage="loadProgress"
-    ></el-progress>
+    />
     <div class="button-row">
       <!-- action buttons -->
       <el-button
@@ -33,15 +33,18 @@
         :disabled="!dataLoaded"
         icon="el-icon-camera"
         circle/>
+
+      <div class="layerGroup">
+        <div id="dropBox"></div>
+      </div>
       <!-- dicom tags table-->
       <tagsTable
         v-if="metaData !== null"
-        :tagsData="metaData" />
+        :tagsData="metaData"
+      />
     </div>
 
-    <div id="layerGroup0" class="layerGroup">
-      <div id="dropBox"></div>
-    </div>
+    <div id="layerGroup0"></div>
   </div>
 </template>
 
@@ -74,6 +77,64 @@ dwv.image.decoderScripts = {
   rle: 'assets/dwv/decoders/dwv/decode-rle.js'
 }
 
+/**
+ * Append a layer div in the root 'dwv' one.
+ *
+ * @param {string} id The id of the layer.
+ */
+const addLayerGroup = (id) => {
+  const layerDiv = document.createElement('div')
+  layerDiv.id = id
+  layerDiv.className = 'layerGroup'
+  const root = document.getElementById('layerGroup0')
+  root.appendChild(layerDiv)
+}
+
+/**
+ * Create simple view config(s).
+ *
+ * @returns {object} The view config.
+ */
+const prepareAndGetSimpleDataViewConfig = () => {
+  // clean up
+  const dwvDiv = document.getElementById('layerGroup0')
+  dwvDiv.innerHTML = ''
+  // add divs
+  addLayerGroup('layerGroupA')
+  return {'*': [{divId: 'layerGroupA'}]}
+}
+
+/**
+ * Create MPR view config(s).
+ *
+ * @returns {object} The view config.
+ */
+const prepareAndGetMPRDataViewConfig = () => {
+  // clean up
+  const dwvDiv = document.getElementById('layerGroup0')
+  dwvDiv.innerHTML = ''
+  // add divs
+  addLayerGroup('layerGroupA')
+  addLayerGroup('layerGroupC')
+  addLayerGroup('layerGroupS')
+  return {
+    '*': [
+      {
+        divId: 'layerGroupA',
+        orientation: 'axial'
+      },
+      {
+        divId: 'layerGroupC',
+        orientation: 'coronal'
+      },
+      {
+        divId: 'layerGroupS',
+        orientation: 'sagittal'
+      }
+    ]
+  }
+}
+
 export default {
   name: 'dwv-vue',
   components: {
@@ -90,7 +151,9 @@ export default {
           options: ['Ruler']
         }
       },
-
+      mode: 0,
+      dataViewConfigs: null,
+      viewOnFirstLoadItem: true,
       selectedTool: 'Select Tool',
       loadProgress: 0,
       dataLoaded: false,
@@ -112,13 +175,24 @@ export default {
     }
   },
   mounted() {
+    if (this.mode === 0) {
+      // simplest: one layer group
+      this.dataViewConfigs = prepareAndGetSimpleDataViewConfig()
+    } else if (this.mode === 1) {
+      // MPR
+      this.viewOnFirstLoadItem = false
+      this.dataViewConfigs = prepareAndGetMPRDataViewConfig()
+    }
+    // app config
+    const config = {
+      viewOnFirstLoadItem: this.viewOnFirstLoadItem,
+      dataViewConfigs: this.dataViewConfigs,
+      tools: this.tools
+    }
     // create app
     this.dwvApp = new dwv.App()
     // initialise app
-    this.dwvApp.init({
-      dataViewConfigs: {'*': [{divId: 'layerGroup0'}]},
-      tools: this.tools
-    })
+    this.dwvApp.init(config)
     // handle load events
     let nLoadItem = null
     let nReceivedLoadError = null
@@ -135,7 +209,11 @@ export default {
       this.showDropbox(false)
     })
     this.dwvApp.addEventListener('loadprogress', event => {
-      this.loadProgress = event.loaded
+      if (this.folderPath) {
+        this.loadProgress = event.loaded * 2
+      } else {
+        this.loadProgress = event.loaded
+      }
     })
     this.dwvApp.addEventListener('renderend', (/*event*/) => {
       if (isFirstRender) {
@@ -155,6 +233,11 @@ export default {
       this.dataLoaded = true
     })
     this.dwvApp.addEventListener('loadend', (/*event*/) => {
+      // console.log(this.dwvApp)
+      // console.log(this.dwvApp.getActiveLayerGroup()
+      //   .getActiveViewLayer().getId())
+      // console.log(this.dwvApp.getDataViewConfig())
+      // console.log(this.dwvApp.getNumberOfLayerGroups())
       if (nReceivedLoadError) {
         this.loadProgress = 0
         alert('Received errors during load. Check log for details.')
@@ -329,7 +412,7 @@ export default {
       if (!box) {
         return
       }
-      const layerDiv = document.getElementById('layerGroup0')
+      const boxDiv = document.getElementById('dropBox')
 
       if (show) {
         // reset css class
@@ -343,10 +426,10 @@ export default {
         // show box
         box.setAttribute('style', 'display:initial')
         // stop layer listening
-        if (layerDiv) {
-          layerDiv.removeEventListener('dragover', this.defaultHandleDragEvent)
-          layerDiv.removeEventListener('dragleave', this.defaultHandleDragEvent)
-          layerDiv.removeEventListener('drop', this.onDrop)
+        if (boxDiv) {
+          boxDiv.removeEventListener('dragover', this.defaultHandleDragEvent)
+          boxDiv.removeEventListener('dragleave', this.defaultHandleDragEvent)
+          boxDiv.removeEventListener('drop', this.onDrop)
         }
         // listen to box events
         box.addEventListener('dragover', this.onBoxDragOver)
@@ -364,10 +447,10 @@ export default {
         box.removeEventListener('dragleave', this.onBoxDragLeave)
         box.removeEventListener('drop', this.onDrop)
         // listen to layer events
-        if (layerDiv) {
-          layerDiv.addEventListener('dragover', this.defaultHandleDragEvent)
-          layerDiv.addEventListener('dragleave', this.defaultHandleDragEvent)
-          layerDiv.addEventListener('drop', this.onDrop)
+        if (boxDiv) {
+          boxDiv.addEventListener('dragover', this.defaultHandleDragEvent)
+          boxDiv.addEventListener('dragleave', this.defaultHandleDragEvent)
+          boxDiv.addEventListener('drop', this.onDrop)
         }
       }
     }
@@ -391,7 +474,7 @@ export default {
   margin: 2px;
 }
 #dwv button.active{
-  /* background-color: var(--md-theme-default-accent); */
+  background-color: var(--md-theme-default-accent);
 }
 
 /* Layers */
@@ -418,18 +501,11 @@ export default {
   border: 5px dashed rgba(68, 138, 255, 0.38);
 }
 .dropBoxBorder.hover {
-  /* border: 5px dashed var(--md-theme-default-primary); */
+  border: 5px dashed var(--md-theme-default-primary);
 }
 
 /* element ui */
 ::v-deep .el-dialog__header {
   padding: 0;
-}
-</style>
-<!-- non "scoped" style -->
-<style>
-.layer {
-  position: absolute;
-  pointer-events: none;
 }
 </style>
