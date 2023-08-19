@@ -15,8 +15,8 @@
         v-on:click="onChangeTool(tool)"
         :disabled="!dataLoaded || !canRunTool(tool)"
         :icon="getToolIcon(tool)"
-        circle>
-      </el-button>
+        circle
+      />
 
       <el-button
         type="primary"
@@ -24,19 +24,31 @@
         v-on:click="onReset()"
         :disabled="!dataLoaded"
         icon="el-icon-refresh-right"
-        circle/>
+        circle
+      />
 
       <el-button
+        v-if="mode===0"
         type="primary"
         title="Toggle Orientation"
         v-on:click="toggleOrientation()"
         :disabled="!dataLoaded"
         icon="el-icon-camera"
-        circle/>
+        circle
+      />
 
-      <div class="layerGroup">
+      <!-- <el-button
+        type="primary"
+        title="Mode"
+        v-on:click="switchMode()"
+        :icon="mode === 0 ? 'el-icon-turn-off' : 'el-icon-open'"
+        circle
+      /> -->
+
+      <div class="dropBox">
         <div id="dropBox"></div>
       </div>
+
       <!-- dicom tags table-->
       <tagsTable
         v-if="metaData !== null"
@@ -44,7 +56,16 @@
       />
     </div>
 
-    <div id="layerGroup0"></div>
+    <div id="layerGroup0" class="layerGroup"
+      v-if="mode===0">
+    </div>
+    <div id="layerGroup1"
+      v-else>
+      <div id="layerGroupA" class="layerGroup"></div>
+      <div id="layerGroupC" class="layerGroup">
+      </div>
+      <div id="layerGroupS" class="layerGroup"></div>
+    </div>
   </div>
 </template>
 
@@ -77,18 +98,18 @@ dwv.image.decoderScripts = {
   rle: 'assets/dwv/decoders/dwv/decode-rle.js'
 }
 
-/**
- * Append a layer div in the root 'dwv' one.
- *
- * @param {string} id The id of the layer.
- */
-const addLayerGroup = (id) => {
-  const layerDiv = document.createElement('div')
-  layerDiv.id = id
-  layerDiv.className = 'layerGroup'
-  const root = document.getElementById('layerGroup0')
-  root.appendChild(layerDiv)
-}
+// /**
+//  * Append a layer div in the root 'dwv' one.
+//  *
+//  * @param {string} id The id of the layer.
+//  */
+// const addLayerGroup = (id) => {
+//   const layerDiv = document.createElement('div')
+//   layerDiv.id = id
+//   layerDiv.className = 'layerGroup'
+//   const root = document.getElementById('layerGroup0')
+//   root.appendChild(layerDiv)
+// }
 
 /**
  * Create simple view config(s).
@@ -96,12 +117,12 @@ const addLayerGroup = (id) => {
  * @returns {object} The view config.
  */
 const prepareAndGetSimpleDataViewConfig = () => {
-  // clean up
-  const dwvDiv = document.getElementById('layerGroup0')
-  dwvDiv.innerHTML = ''
-  // add divs
-  addLayerGroup('layerGroupA')
-  return {'*': [{divId: 'layerGroupA'}]}
+  // // clean up
+  // const dwvDiv = document.getElementById('layerGroup0')
+  // dwvDiv.innerHTML = ''
+  // // add divs
+  // addLayerGroup('layerGroupA')
+  return {'*': [{divId: 'layerGroup0'}]}
 }
 
 /**
@@ -110,13 +131,13 @@ const prepareAndGetSimpleDataViewConfig = () => {
  * @returns {object} The view config.
  */
 const prepareAndGetMPRDataViewConfig = () => {
-  // clean up
-  const dwvDiv = document.getElementById('layerGroup0')
-  dwvDiv.innerHTML = ''
-  // add divs
-  addLayerGroup('layerGroupA')
-  addLayerGroup('layerGroupC')
-  addLayerGroup('layerGroupS')
+  // // clean up
+  // const dwvDiv = document.getElementById('layerGroup0')
+  // dwvDiv.innerHTML = ''
+  // // add divs
+  // addLayerGroup('layerGroupA')
+  // addLayerGroup('layerGroupC')
+  // addLayerGroup('layerGroupS')
   return {
     '*': [
       {
@@ -185,9 +206,9 @@ export default {
     }
     // app config
     const config = {
-      viewOnFirstLoadItem: this.viewOnFirstLoadItem,
       dataViewConfigs: this.dataViewConfigs,
-      tools: this.tools
+      tools: this.tools,
+      viewOnFirstLoadItem: this.viewOnFirstLoadItem
     }
     // create app
     this.dwvApp = new dwv.App()
@@ -215,29 +236,15 @@ export default {
         this.loadProgress = event.loaded
       }
     })
-    this.dwvApp.addEventListener('renderend', (/*event*/) => {
-      if (isFirstRender) {
-        isFirstRender = false
-        // available tools
-        let selectedTool = 'ZoomAndPan'
-        if (this.dwvApp.canScroll()) {
-          selectedTool = 'Scroll'
+    this.dwvApp.addEventListener('load', (/*event*/) => {
+      if (!this.viewOnFirstLoadItem) {
+        // render data
+        for (let i = 0; i < this.dwvApp.getNumberOfLoadedData(); ++i) {
+          this.dwvApp.render(i)
         }
-        this.onChangeTool(selectedTool)
       }
     })
-    this.dwvApp.addEventListener('load', (/*event*/) => {
-      // set dicom tags
-      this.metaData = this.dwvApp.getMetaData(0)
-      // set data loaded flag
-      this.dataLoaded = true
-    })
     this.dwvApp.addEventListener('loadend', (/*event*/) => {
-      // console.log(this.dwvApp)
-      // console.log(this.dwvApp.getActiveLayerGroup()
-      //   .getActiveViewLayer().getId())
-      // console.log(this.dwvApp.getDataViewConfig())
-      // console.log(this.dwvApp.getNumberOfLayerGroups())
       if (nReceivedLoadError) {
         this.loadProgress = 0
         alert('Received errors during load. Check log for details.')
@@ -250,6 +257,20 @@ export default {
         this.loadProgress = 0
         alert('Load was aborted.')
         this.showDropbox(true)
+      }
+      // set dicom tags
+      this.metaData = this.dwvApp.getMetaData(0)
+      // set data loaded flag
+      this.dataLoaded = true
+
+      if (isFirstRender) {
+        isFirstRender = false
+        // available tools
+        let selectedTool = 'ZoomAndPan'
+        if (this.dwvApp.canScroll()) {
+          selectedTool = 'Scroll'
+        }
+        this.onChangeTool(selectedTool)
       }
     })
     this.dwvApp.addEventListener('loaditem', (/*event*/) => {
@@ -306,6 +327,13 @@ export default {
         res = 'el-icon-edit'
       }
       return res
+    },
+    switchMode: function () {
+      if (this.mode === 0) {
+        this.mode = 1
+      } else {
+        this.mode = 0
+      }
     },
     onChangeTool: function (tool) {
       this.selectedTool = tool
@@ -478,16 +506,53 @@ export default {
 }
 
 /* Layers */
-.layerGroup {
+.dropBox {
   position: relative;
   padding: 0;
   display: flex;
   justify-content: center;
   height: 90%;
 }
+.layerGroup {
+  display:inline-block;
+  height: 350px;
+  width: max(30%, 350px);
+  margin: 5px;
+  /* allow child centering */
+  position: relative;
+}
 .layer {
+  /* needed for overlay */
   position: absolute;
+  /* center */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+canvas {
+  /* avoid parent auto-resize */
+  vertical-align: middle;
+}
+.line {
+  padding: 5px;
+}
+/** tooltip */
+.layerGroup span {
+  display: none;
+  background-color: palegreen;
+  padding: 2px;
+}
+.layerGroup:hover span {
+  display: inline-block;
+  position: absolute;
+  overflow: hidden;
+}
+/** crossshair */
+.layerGroup hr {
   pointer-events: none;
+  border: none;
+  position: absolute;
+  margin: 0;
 }
 
 /* drag&drop */
