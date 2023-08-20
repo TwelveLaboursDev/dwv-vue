@@ -28,11 +28,10 @@
       />
 
       <el-button
-        v-if="mode===0"
         type="primary"
         title="Toggle Orientation"
         v-on:click="toggleOrientation()"
-        :disabled="!dataLoaded"
+        :disabled="!dataLoaded || mode!==0"
         icon="el-icon-camera"
         circle
       />
@@ -41,11 +40,12 @@
         type="primary"
         title="Mode"
         v-on:click="onChangeDataView()"
+        :disabled="!dataLoaded"
         :icon="mode === 0 ? 'el-icon-turn-off' : 'el-icon-open'"
         circle
       />
 
-      <div class="dropBox">
+      <div class="dropBox0">
         <div id="dropBox"></div>
       </div>
 
@@ -111,7 +111,9 @@ const prepareAndGetSimpleDataViewConfig = () => {
   // clean up
   const dwvDiv = document.getElementById('layerGroup0')
   dwvDiv.innerHTML = ''
-  return {'*': [{divId: 'layerGroup0'}]}
+  // add divs
+  addLayerGroup('layerGroupACS')
+  return {'*': [{divId: 'layerGroupACS'}]}
 }
 
 /**
@@ -278,6 +280,7 @@ export default {
     })
     // handle window resize
     window.addEventListener('resize', function () {
+      console.log(this.dwvApp)
       this.dwvApp.onResize()
     })
     if (this.filePath) {
@@ -502,56 +505,26 @@ export default {
 }
 
 /* Layers */
-.dropBox {
+::v-deep .layerGroup {
+  display:inline-block;
+  height: 300px;
+  width: max(30%, 300px);
+  margin: 5px;
+  /* allow child centering */
+  position: relative;
+}
+::v-deep canvas {
+  /* avoid parent auto-resize */
+  vertical-align: middle;
+}
+
+/* drag&drop */
+.dropBox0 {
   position: relative;
   padding: 0;
   display: flex;
   justify-content: center;
 }
-.layerGroup {
-  display:inline-block;
-  height: 350px;
-  width: max(30%, 350px);
-  margin: 5px;
-  background-color: blue;
-  /* allow child centering */
-  position: relative;
-}
-.layer {
-  /* needed for overlay */
-  position: absolute;
-  /* center */
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-canvas {
-  /* avoid parent auto-resize */
-  vertical-align: middle;
-}
-.line {
-  padding: 5px;
-}
-/** tooltip */
-.layerGroup span {
-  display: none;
-  background-color: palegreen;
-  padding: 2px;
-}
-.layerGroup:hover span {
-  display: inline-block;
-  position: absolute;
-  overflow: hidden;
-}
-/** crossshair */
-.layerGroup hr {
-  pointer-events: none;
-  border: none;
-  position: absolute;
-  margin: 0;
-}
-
-/* drag&drop */
 .dropBox {
   margin: auto;
   text-align: center;
@@ -563,10 +536,5 @@ canvas {
 }
 .dropBoxBorder.hover {
   border: 5px dashed var(--md-theme-default-primary);
-}
-
-/* element ui */
-::v-deep .el-dialog__header {
-  padding: 0;
 }
 </style>
