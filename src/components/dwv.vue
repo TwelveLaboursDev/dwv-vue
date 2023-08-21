@@ -175,7 +175,7 @@ export default {
       dropboxClassName: 'dropBox',
       borderClassName: 'dropBoxBorder',
       hoverClassName: 'hover',
-      filePath: null,
+      loadFromOrthanc: false,
       dicom: []
     }
     res.toolNames = Object.keys(res.tools)
@@ -183,7 +183,7 @@ export default {
   },
   created() {
     if (window.location.pathname !== '/') {
-      this.filePath = window.location.pathname
+      this.loadFromOrthanc = true
     }
   },
   mounted() {
@@ -221,7 +221,7 @@ export default {
       this.showDropbox(false)
     })
     this.dwvApp.addEventListener('loadprogress', event => {
-      if (this.filePath) {
+      if (this.loadFromOrthanc) {
         this.loadProgress = event.loaded * 2
       } else {
         this.loadProgress = event.loaded
@@ -283,7 +283,7 @@ export default {
       console.log(this.dwvApp)
       this.dwvApp.onResize()
     })
-    if (this.filePath) {
+    if (this.loadFromOrthanc) {
       // load dicom files from url path
       this.setupDICOMPath()
     } else {
@@ -390,14 +390,11 @@ export default {
       }
     },
     setupDICOMPath: async function () {
-      const queryPath = process.env.VUE_APP_QUERY +
-      '/collection'
-      await axios.post(queryPath, {path: this.filePath})
+      const queryPath = `${process.env.VUE_APP_QUERY}/instance`
+      await axios.get(queryPath)
         .then((res)=> {
-          res.data.files.forEach((element) => {
-            const dicomPath = process.env.VUE_APP_QUERY +
-            '/data/preview' +
-            element.path
+          res.data.forEach((id) => {
+            const dicomPath = `${process.env.VUE_APP_QUERY}/dicom/${id}`
             this.dicom.push(dicomPath)
           })
         })
