@@ -388,13 +388,28 @@ export default {
       for (var i = 0; i < this.dwvApp.getNumberOfLoadedData(); ++i) {
         this.dwvApp.render(i)
       }
+      const propList = [
+        'WindowLevel',
+        'Position',
+        'Zoom',
+        'Offset',
+        'Opacity'
+      ]
+      const binders = []
+      // add all binders when use mpr view
+      for (var b = 0; b < propList.length; ++b) {
+        binders.push(new dwv.gui[propList[b] + 'Binder'])
+      }
+      this.dwvApp.setLayerGroupsBinders(binders)
     },
     setupDICOMPath: async function () {
       const queryPath = `${process.env.VUE_APP_QUERY}/instance`
       const payload = {
         'study':
+          // replace by studyInstanceUID
           '1.3.6.1.4.1.14519.5.2.1.186051521067863971269584893740842397538',
         'series':
+          // replace by seriesInstanceUID
           '1.3.6.1.4.1.14519.5.2.1.175414966301645518238419021688341658582'
       }
       await axios.post(queryPath, payload)
