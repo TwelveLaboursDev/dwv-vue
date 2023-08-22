@@ -353,7 +353,7 @@ export default {
       const config = {
         '*': [
           {
-            divId: 'layerGroup0',
+            divId: 'layerGroupACS',
             orientation: this.orientation
           }
         ]
@@ -391,7 +391,13 @@ export default {
     },
     setupDICOMPath: async function () {
       const queryPath = `${process.env.VUE_APP_QUERY}/instance`
-      await axios.get(queryPath)
+      const payload = {
+        'study':
+          '1.3.6.1.4.1.14519.5.2.1.186051521067863971269584893740842397538',
+        'series':
+          '1.3.6.1.4.1.14519.5.2.1.175414966301645518238419021688341658582'
+      }
+      await axios.post(queryPath, payload)
         .then((res)=> {
           res.data.forEach((id) => {
             const dicomPath = `${process.env.VUE_APP_QUERY}/dicom/${id}`
