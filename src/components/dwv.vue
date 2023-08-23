@@ -13,7 +13,7 @@
         :id="tool"
         :title="tool"
         v-on:click="onChangeTool(tool)"
-        :disabled="!dataLoaded || !canRunTool(tool)"
+        :disabled="!dataLoaded || !canRunTool(tool) || tool === 'Draw'"
         :icon="getToolIcon(tool)"
         circle
       />
@@ -48,15 +48,15 @@
       <div class="dropBox0">
         <div id="dropBox"></div>
       </div>
-
-      <!-- dicom tags table-->
-      <tagsTable
-        v-if="metaData !== null"
-        :tagsData="metaData"
-      />
     </div>
 
     <div id="layerGroup0"></div>
+
+    <!-- dicom tags table-->
+    <tagsTable
+      v-if="metaData !== null"
+      :tagsData="metaData"
+    />
   </div>
 </template>
 
@@ -80,14 +80,6 @@ import dwv from 'dwv'
 import tagsTable from './tags-table'
 
 // gui overrides
-
-// Image decoders (for web workers)
-dwv.image.decoderScripts = {
-  jpeg2000: 'assets/dwv/decoders/pdfjs/decode-jpeg2000.js',
-  'jpeg-lossless': 'assets/dwv/decoders/rii-mango/decode-jpegloss.js',
-  'jpeg-baseline': 'assets/dwv/decoders/pdfjs/decode-jpegbaseline.js',
-  rle: 'assets/dwv/decoders/dwv/decode-rle.js'
-}
 
 /**
  * Append a layer div in the root 'dwv' one.
@@ -187,6 +179,13 @@ export default {
     }
   },
   mounted() {
+    // Image decoders (for web workers)
+    dwv.image.decoderScripts = {
+      jpeg2000: 'assets/dwv/decoders/pdfjs/decode-jpeg2000.js',
+      'jpeg-lossless': 'assets/dwv/decoders/rii-mango/decode-jpegloss.js',
+      'jpeg-baseline': 'assets/dwv/decoders/pdfjs/decode-jpegbaseline.js',
+      rle: 'assets/dwv/decoders/dwv/decode-rle.js'
+    }
     if (this.mode === 0) {
       // simplest: one layer group
       this.dataViewConfigs = prepareAndGetSimpleDataViewConfig()
@@ -278,11 +277,10 @@ export default {
     this.dwvApp.addEventListener('keydown', event => {
       this.dwvApp.defaultOnKeydown(event)
     })
-    // handle window resize
-    window.addEventListener('resize', function () {
-      console.log(this.dwvApp)
-      this.dwvApp.onResize()
-    })
+    // // handle window resize
+    // window.addEventListener('resize', function () {
+    //   this.dwvApp.onResize()
+    // })
     if (this.loadFromOrthanc) {
       // load dicom files from url path
       this.setupDICOMPath()
