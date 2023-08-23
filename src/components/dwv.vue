@@ -527,16 +527,16 @@ export default {
 
 /* Layers */
 ::v-deep .layerGroup {
-  display:inline-block;
-  height: 300px;
-  width: max(30%, 300px);
-  margin: 5px;
+  display: inline-block;
+  height: 250px;
+  width: 250px;
+  margin: 10px;
   /* allow child centering */
   position: relative;
-}
-::v-deep canvas {
-  /* avoid parent auto-resize */
-  vertical-align: middle;
+  canvas {
+    /* avoid parent auto-resize */
+    vertical-align: middle;
+  }
 }
 
 /* drag&drop */
