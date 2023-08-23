@@ -56,6 +56,7 @@
     <tagsTable
       v-if="metaData !== null"
       :tagsData="metaData"
+      :instance="instanceNumber"
     />
   </div>
 </template>
@@ -168,7 +169,8 @@ export default {
       borderClassName: 'dropBoxBorder',
       hoverClassName: 'hover',
       loadFromOrthanc: false,
-      dicom: []
+      dicom: [],
+      instanceNumber: 0
     }
     res.toolNames = Object.keys(res.tools)
     return res
@@ -272,6 +274,9 @@ export default {
     })
     this.dwvApp.addEventListener('loadabort', (/*event*/) => {
       ++nReceivedLoadAbort
+    })
+    this.dwvApp.addEventListener('positionchange', event => {
+      this.instanceNumber = event.value[0][2]
     })
     // handle key events
     this.dwvApp.addEventListener('keydown', event => {

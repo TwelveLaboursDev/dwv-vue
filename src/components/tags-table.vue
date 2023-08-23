@@ -132,7 +132,7 @@ const getTagReducer = (tagData, instanceNumber, prefix) => {
 
 export default {
   name: 'TagsTable',
-  props: ['tagsData'],
+  props: ['tagsData', 'instance'],
   data: () => ({
     search: null,
     searched: [],
@@ -140,6 +140,13 @@ export default {
     sliderMax: undefined,
     instanceNumber: undefined
   }),
+  watch: {
+    'instance': {
+      handler() {
+        this.onSliderChange(this.instance)
+      }
+    }
+  },
   methods: {
     searchOnTable() {
       const metaArray = getMetaArray(this.tagsData, this.instanceNumber)
