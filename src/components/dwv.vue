@@ -53,11 +53,13 @@
     <div id="layerGroup0"></div>
 
     <!-- dicom tags table-->
-    <tagsTable
-      v-if="metaData !== null"
-      :tagsData="metaData"
-      :instance="instanceNumber"
-    />
+    <div class="tags-table">
+      <tagsTable
+        v-if="metaData !== null"
+        :tagsData="metaData"
+        :instance="instanceNumber"
+      />
+    </div>
   </div>
 </template>
 
@@ -507,9 +509,13 @@ export default {
 <style scoped>
 #dwv {
   font-family: Arial, Helvetica, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .button-row {
+  width: 80%;
   text-align: center;
   padding: 5px;
 }
@@ -537,21 +543,22 @@ export default {
 
 /* drag&drop */
 .dropBox0 {
-  position: relative;
-  padding: 0;
   display: flex;
-  justify-content: center;
 }
 .dropBox {
   margin: auto;
-  text-align: center;
-  vertical-align: middle;
-  width: 50%; height: 75%;
+  width: 50%;
+  height: 75%;
 }
 .dropBoxBorder {
   border: 5px dashed rgba(68, 138, 255, 0.38);
 }
 .dropBoxBorder.hover {
   border: 5px dashed var(--md-theme-default-primary);
+}
+
+/* Tags table */
+.tags-table {
+  width: 80%;
 }
 </style>

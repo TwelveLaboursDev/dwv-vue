@@ -4,19 +4,22 @@
       <div class="name">
         <h1>DICOM Tags</h1>
       </div>
-      <div class="search">
-        <el-input
-          v-model="search"
-          placeholder="Type to search"
-          @input="searchOnTable"/>
-      </div>
       <div class="slider">
+        <span>Current Instance: {{ instanceNumber }}</span>
         <el-slider
           :disabled="sliderMin===sliderMax?true:false"
           :min="sliderMin"
           :max="sliderMax"
           v-model="instanceNumber"
-          @input="onSliderChange"/>
+          @input="onSliderChange"
+        />
+      </div>
+      <div class="search">
+        <el-input
+          v-model="search"
+          placeholder="Type to search"
+          @input="searchOnTable"
+        />
       </div>
     </div>
 
@@ -181,13 +184,11 @@ export default {
 <style scoped>
 .toolbar{
   display: flex;
-  /* flex-direction: row; */
-  justify-content: space-between;
+  justify-content: space-around;
   flex-wrap: wrap;
   align-items:center;
   .name,.search,.slider {
-    min-width: 120px;
-    margin-right: 5px;
+    min-width: 250px;
   }
 }
 </style>
