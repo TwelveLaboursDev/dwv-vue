@@ -64,7 +64,6 @@
 </template>
 
 <script>
-
 // import
 import axios from 'axios'
 import Vue from 'vue'
@@ -560,5 +559,10 @@ export default {
 /* Tags table */
 .tags-table {
   width: 80%;
+}
+
+/* Element ui */
+::v-deep .el-progress {
+  width: 100%;
 }
 </style>
