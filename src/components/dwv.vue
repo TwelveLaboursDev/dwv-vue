@@ -222,11 +222,7 @@ export default {
       this.showDropbox(false)
     })
     this.dwvApp.addEventListener('loadprogress', event => {
-      if (this.loadFromOrthanc) {
-        this.loadProgress = event.loaded * 2
-      } else {
-        this.loadProgress = event.loaded
-      }
+      this.loadProgress = event.loaded
     })
     this.dwvApp.addEventListener('load', (/*event*/) => {
       if (!this.viewOnFirstLoadItem) {
