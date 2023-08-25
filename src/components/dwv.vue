@@ -67,6 +67,7 @@
         v-if="metaData !== null"
         :tagsData="metaData"
         :instance="instanceNumber"
+        v-on:instanceNumber="onChangeInstance"
       />
     </div>
   </div>
@@ -451,6 +452,17 @@ export default {
       }
       this.setupViewDirection(displaySize)
       this.setupViewSize(displaySize)
+    },
+    onChangeInstance: function (index) {
+      const viewController = this.dwvApp
+        .getActiveLayerGroup()
+        .getActiveViewLayer()
+        .getViewController()
+      let currentIndex = viewController
+        .getCurrentIndex()
+        .getValues()
+      currentIndex[2] = index
+      viewController.setCurrentIndex(new dwv.math.Index(currentIndex))
     },
     setupDICOMPath: async function () {
       const queryPath = `${process.env.VUE_APP_QUERY}/instance`

@@ -158,6 +158,7 @@ export default {
     onSliderChange(value) {
       this.instanceNumber = value
       this.searchOnTable()
+      this.$emit('instanceNumber', this.instanceNumber)
     }
   },
   created() {
