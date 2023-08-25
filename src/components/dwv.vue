@@ -436,7 +436,9 @@ export default {
     },
     onChangeViewSize: function (view) {
       let displaySize
-      const {small, median, large} = [250, 500, 750]
+      const small = 250
+      const median = 500
+      const large = 750
       if (view === 0) {
         displaySize = median
         this.viewSize = 1
