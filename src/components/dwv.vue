@@ -182,7 +182,7 @@ export default {
       viewSize: 0,
       loadFromOrthanc: false,
       dicom: [],
-      instanceNumber: 0,
+      instanceNumber: 1,
     }
     res.toolNames = Object.keys(res.tools)
     return res
@@ -374,6 +374,7 @@ export default {
       for (let i = 0; i < this.dwvApp.getNumberOfLoadedData(); ++i) {
         this.dwvApp.render(i)
       }
+      this.onChangeInstance(this.instanceNumber)
     },
     onChangeShape: function (shape) {
       if (this.dwvApp && this.selectedTool === 'Draw') {
@@ -413,6 +414,7 @@ export default {
       }
       this.dwvApp.setLayerGroupsBinders(binders)
       this.onChangeViewSize(this.viewSize - 1 < 0 ? 2 : this.viewSize - 1)
+      this.onChangeInstance(this.instanceNumber)
     },
     setupViewSize: function (size) {
       const layer = document.querySelectorAll('.layerGroup')
@@ -458,11 +460,11 @@ export default {
         .getActiveLayerGroup()
         .getActiveViewLayer()
         .getViewController()
-      let currentIndex = viewController
+      const currentIndex = viewController
         .getCurrentIndex()
         .getValues()
-      currentIndex[2] = index
-      viewController.setCurrentIndex(new dwv.math.Index(currentIndex))
+      viewController.setCurrentIndex(
+        new dwv.math.Index([currentIndex[0], currentIndex[1], index]))
     },
     setupDICOMPath: async function () {
       const queryPath = `${process.env.VUE_APP_QUERY}/instance`
