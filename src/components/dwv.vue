@@ -45,6 +45,15 @@
         circle
       />
 
+      <el-button
+        type="primary"
+        title="Size"
+        v-on:click="onChangeViewSize(viewSize)"
+        :disabled="!dataLoaded"
+        icon="el-icon-full-screen"
+        circle
+      />
+
       <div class="dropBox0">
         <div id="dropBox"></div>
       </div>
@@ -169,9 +178,10 @@ export default {
       dropboxClassName: 'dropBox',
       borderClassName: 'dropBoxBorder',
       hoverClassName: 'hover',
+      viewSize: 0,
       loadFromOrthanc: false,
       dicom: [],
-      instanceNumber: 0
+      instanceNumber: 0,
     }
     res.toolNames = Object.keys(res.tools)
     return res
@@ -401,6 +411,44 @@ export default {
         binders.push(new dwv.gui[propList[b] + 'Binder'])
       }
       this.dwvApp.setLayerGroupsBinders(binders)
+      this.onChangeViewSize(this.viewSize - 1 < 0 ? 2 : this.viewSize - 1)
+    },
+    setupViewSize: function (size) {
+      const layer = document.querySelectorAll('.layerGroup')
+      for (let i = 0; i < layer.length; i++) {
+        layer[i].setAttribute('style', `height: ${size}px; width: ${size}px`)
+      }
+      const canvas = document.querySelectorAll('canvas')
+      for (let i = 0; i < canvas.length; i++) {
+        canvas[i].setAttribute('style', `height: ${size}px; width: ${size}px`)
+      }
+    },
+    setupViewDirection: function (size) {
+      const width = window.innerWidth
+      if (this.mode === 1) {
+        const rootLayer = document.querySelector('#layerGroup0')
+        if (width >= (size + 10) * 3) {
+          rootLayer.style.flexDirection = 'row'
+        } else if (width < (size + 20) * 3) {
+          rootLayer.style.flexDirection = 'column'
+        }
+      }
+    },
+    onChangeViewSize: function (view) {
+      let displaySize
+      const {small, median, large} = [250, 500, 750]
+      if (view === 0) {
+        displaySize = median
+        this.viewSize = 1
+      } else if (view === 1) {
+        displaySize = large
+        this.viewSize = 2
+      } else if (view === 2) {
+        displaySize = small
+        this.viewSize = 0
+      }
+      this.setupViewDirection(displaySize)
+      this.setupViewSize(displaySize)
     },
     setupDICOMPath: async function () {
       const queryPath = `${process.env.VUE_APP_QUERY}/instance`
@@ -415,7 +463,7 @@ export default {
       await axios.post(queryPath, payload)
         .then((res)=> {
           res.data.forEach((id) => {
-            const dicomPath = `${process.env.VUE_APP_QUERY}/dicom/${id}`
+            const dicomPath = `${process.env.VUE_APP_QUERY}/dicom/export/${id}`
             this.dicom.push(dicomPath)
           })
         })
@@ -527,17 +575,20 @@ export default {
 }
 
 /* Layers */
+#layerGroup0 {
+  display: flex;
+  flex-direction: row;
+}
 ::v-deep .layerGroup {
-  display: inline-block;
   height: 250px;
   width: 250px;
   margin: 10px;
   /* allow child centering */
   position: relative;
-  canvas {
-    /* avoid parent auto-resize */
-    vertical-align: middle;
-  }
+}
+::v-deep canvas {
+  /* avoid parent auto-resize */
+  vertical-align: middle;
 }
 
 /* drag&drop */

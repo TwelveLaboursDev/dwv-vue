@@ -187,8 +187,8 @@ export default {
   justify-content: space-around;
   flex-wrap: wrap;
   align-items: center;
-  .name,.search,.slider {
-    min-width: 250px;
-  }
+}
+.name,.search,.slider {
+  min-width: 250px;
 }
 </style>
