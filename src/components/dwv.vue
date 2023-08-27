@@ -7,7 +7,6 @@
     <div class="button-row">
       <!-- action buttons -->
       <el-button
-        type="primary"
         v-for="tool in toolNames"
         :key="tool"
         :id="tool"
@@ -19,7 +18,6 @@
       />
 
       <el-button
-        type="primary"
         title="Reset"
         v-on:click="onReset()"
         :disabled="!dataLoaded"
@@ -28,7 +26,6 @@
       />
 
       <el-button
-        type="primary"
         title="Toggle Orientation"
         v-on:click="toggleOrientation()"
         :disabled="!dataLoaded || mode!==0"
@@ -37,7 +34,6 @@
       />
 
       <el-button
-        type="primary"
         title="Mode"
         v-on:click="onChangeDataView()"
         :disabled="!dataLoaded"
@@ -46,7 +42,6 @@
       />
 
       <el-button
-        type="primary"
         title="Size"
         v-on:click="onChangeViewSize(viewSize)"
         :disabled="!dataLoaded"
@@ -637,5 +632,9 @@ export default {
 /* Element ui */
 ::v-deep .el-progress {
   width: 100%;
+}
+::v-deep .el-button {
+  height: 50px;
+  width: 50px;
 }
 </style>
