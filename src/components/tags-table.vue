@@ -31,13 +31,13 @@
         <el-table-column
           label="Name"
           prop="name"
-          min-width="300">
-        </el-table-column>
+          min-width="250"
+        />
         <el-table-column
           label="Value"
           prop="value"
-          min-width="300">
-        </el-table-column>
+          min-width="250"
+        />
       </el-table>
       <el-table
         v-else
@@ -47,8 +47,8 @@
         <el-table-column
           label="Empty"
           prop="empty"
-          min-width="600">
-        </el-table-column>
+          min-width="500"
+        />
       </el-table>
     </div>
   </div>
