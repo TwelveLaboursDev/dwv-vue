@@ -612,6 +612,8 @@ export default {
 #layerGroup0 {
   display: flex;
   flex-direction: row;
+  margin: 10px;
+  border: 1px solid black;
 }
 ::v-deep .layerGroup {
   height: 500px;
@@ -644,6 +646,7 @@ export default {
 /* Tags table */
 .tags-table {
   width: 40%;
+  margin-bottom: 50px;
 }
 
 /* Element ui */
