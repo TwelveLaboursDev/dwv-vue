@@ -612,7 +612,7 @@ export default {
 #layerGroup0 {
   display: flex;
   flex-direction: row;
-  margin: 10px;
+  margin: 20px;
   border: 1px solid black;
 }
 ::v-deep .layerGroup {
