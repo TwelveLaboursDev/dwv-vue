@@ -27,7 +27,9 @@
       <el-table
         v-if="searched.length>0"
         :data="searched"
-        height="500">
+        height="500"
+        :cell-style="{ padding: '10px 0 10px 0' }"
+      >
         <el-table-column
           label="Name"
           prop="name"
@@ -43,7 +45,9 @@
         v-else
         :data="[{empty:`No tags found for this ${search} query.`}]"
         style="width: 100%"
-        height="500">
+        height="500"
+        :cell-style="{ padding: '10px 0 10px 0' }"
+      >
         <el-table-column
           label="Empty"
           prop="empty"

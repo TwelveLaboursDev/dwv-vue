@@ -645,7 +645,7 @@ export default {
 
 /* Tags table */
 .tags-table {
-  width: 40%;
+  width: 60%;
   margin-bottom: 50px;
 }
 
