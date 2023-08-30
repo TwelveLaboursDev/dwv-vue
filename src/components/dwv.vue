@@ -8,6 +8,7 @@
       <!-- action buttons -->
       <el-button
         v-for="tool in toolNames"
+        :class="activateTool(tool)"
         :key="tool"
         :id="tool"
         :title="tool"
@@ -378,10 +379,6 @@ export default {
     },
     onChangeTool: function (tool) {
       this.selectedTool = tool
-      for (const t of this.toolNames) {
-        this.activateTool(t, false)
-      }
-      this.activateTool(tool, true)
       this.dwvApp.setTool(tool)
       // if (tool === 'Draw') {
       //   this.onChangeShape(this.tools.Draw.options[0])
@@ -398,11 +395,10 @@ export default {
       }
       return res
     },
-    activateTool: function (tool, flag) {
+    activateTool: function (tool) {
+      const flag = tool === this.selectedTool ? true : false
       if (flag) {
-        document.getElementById(tool).classList.add('active')
-      } else {
-        document.getElementById(tool).classList.remove('active')
+        return 'active'
       }
     },
     onChangeBinder: function () {
@@ -659,8 +655,9 @@ export default {
 #dwv button {
   margin: 2px;
 }
-#dwv button.active{
-  background-color: var(--md-theme-default-accent);
+
+.active {
+background-color: black;
 }
 
 .binders-group {
