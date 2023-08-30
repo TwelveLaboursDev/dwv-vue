@@ -225,6 +225,7 @@ export default {
       binders: ['WindowLevel', 'Position', 'Zoom', 'Offset', 'Opacity'],
       isIndeterminate: false,
       viewSize: 1,
+      pixelSize: [250, 500, 750],
       loadFromOrthanc: false,
       dicom: [],
       instanceNumber: 1,
@@ -492,21 +493,22 @@ export default {
       }
     },
     setupViewDirection: function (width, size) {
+      const rowViewSize = (size + 40) * 3
       if (this.mode === 1) {
         const rootLayer = document.querySelector('#layerGroup0')
-        if (width >= (size + 10) * 3) {
+        if (width >= rowViewSize) {
           rootLayer.style.flexDirection = 'row'
-        } else if (width < (size + 20) * 3) {
+        } else if (width < rowViewSize) {
           rootLayer.style.flexDirection = 'column'
         }
       }
     },
     onChangeViewSize: function (view) {
-      const width = window.innerWidth
+      const width = document.documentElement.clientWidth
       let displaySize
-      const small = 250
-      const median = 500
-      const large = 750
+      const small = this.pixelSize[0]
+      const median = this.pixelSize[1]
+      const large = this.pixelSize[2]
       if (view === 0) {
         if (width < median) {
           return
