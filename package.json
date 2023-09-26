@@ -1,10 +1,10 @@
 {
-  "name": "dwv-vue",
-  "version": "0.8.0-beta",
+  "name": "@12-labours/dicomvuer",
+  "version": "0.1.0-beta.4",
   "description": "Medical viewer using DWV (DICOM Web Viewer) and Vue.js.",
   "author": "ivmartel",
   "license": "GPL-3.0",
-  "private": true,
+  "private": false,
   "scripts": {
     "start": "vue-cli-service serve",
     "lint": "vue-cli-service lint",
@@ -12,15 +12,16 @@
     "test-ci": "vue-cli-service test:unit",
     "e2e": "vue-cli-service test:e2e",
     "build": "vue-cli-service build",
+    "build-bundle": "vue-cli-service build --target lib --name dwv-vue ./src/components/index.js",
     "build-trunk": "NODE_ENV=production DEPLOY_NAME=trunk vue-cli-service build",
     "build-stable": "NODE_ENV=production DEPLOY_NAME=stable vue-cli-service build"
   },
   "dependencies": {
     "core-js": "^3.28.0",
     "dwv": "0.31.2",
+    "element-ui": "^2.15.13",
     "register-service-worker": "^1.7.2",
-    "vue": "^2.7.14",
-    "vue-material": "~1.0.0-beta"
+    "vue": "^2.7.14"
   },
   "devDependencies": {
     "@babel/core": "^7.22.1",

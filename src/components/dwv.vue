@@ -1,82 +1,214 @@
 <template>
   <div id="dwv">
-    <md-progress-bar
-      md-mode="determinate"
-      :md-value="loadProgress"
-    ></md-progress-bar>
+    <el-progress
+      :show-text="false"
+      :percentage="loadProgress"
+    />
     <div class="button-row">
       <!-- action buttons -->
-      <md-button
-        class="md-icon-button md-raised md-primary"
+      <el-button
         v-for="tool in toolNames"
+        :class="activateTool(tool)"
         :key="tool"
         :id="tool"
         :title="tool"
         v-on:click="onChangeTool(tool)"
         :disabled="!dataLoaded || !canRunTool(tool)"
-        ><md-icon>{{ getToolIcon(tool)}}</md-icon>
-      </md-button>
+        :icon="getToolIcon(tool)"
+        circle
+      />
 
-      <md-button
-        class="md-icon-button md-raised md-primary"
+      <el-popover
+        placement="bottom"
+        trigger="click"
+      >
+        <el-checkbox
+          :indeterminate="isIndeterminate"
+          v-model="checkAll"
+          @change="handleCheckAllChange">
+          Check all
+        </el-checkbox>
+        <el-checkbox-group
+          class="binders-group"
+          v-model="checkedBinders"
+          @change="handleCheckedBindersChange"
+        >
+          <el-checkbox
+            v-for="binder in binders"
+            :label="binder"
+            :key="binder">
+            {{ binder }}
+          </el-checkbox>
+        </el-checkbox-group>
+        <el-button
+          slot="reference"
+          title="Binder"
+          :disabled="!dataLoaded || mode === 0"
+          icon="el-icon-connection"
+          circle
+        />
+      </el-popover>
+
+      <el-button
         title="Reset"
         v-on:click="onReset()"
         :disabled="!dataLoaded"
-        ><md-icon>refresh</md-icon>
-      </md-button>
+        icon="el-icon-refresh-right"
+        circle
+      />
 
-      <md-button
-        class="md-icon-button md-raised md-primary"
+      <el-button
         title="Toggle Orientation"
         v-on:click="toggleOrientation()"
-        :disabled="!dataLoaded"
-        ><md-icon>cameraswitch</md-icon>
-      </md-button>
+        :disabled="!dataLoaded || mode === 1"
+        icon="el-icon-camera"
+        circle
+      />
 
-      <md-button
-        class="md-icon-button md-raised md-primary"
-        title="Tags"
-        v-on:click="showDicomTags = true"
+      <el-button
+        title="Mode"
+        v-on:click="onChangeDataView()"
         :disabled="!dataLoaded"
-        ><md-icon>library_books</md-icon>
-      </md-button>
-      <!-- dicom tags dialog-->
-      <md-dialog :md-active.sync="showDicomTags">
-        <tagsTable :tagsData="metaData" />
-      </md-dialog>
+        :icon="mode === 0 ? 'el-icon-turn-off' : 'el-icon-open'"
+        circle
+      />
+
+      <el-button
+        title="Size"
+        v-on:click="onChangeViewSize(viewSize)"
+        :disabled="!dataLoaded"
+        icon="el-icon-full-screen"
+        circle
+      />
+
+      <el-tooltip placement="bottom">
+        <div slot="content" v-for="desc in helpInfo" :key="desc.name">
+          <h3>{{ desc.name }}</h3>
+          <p>{{ desc.info }}</p>
+          <div v-if="'use' in desc" >
+            <li v-for="act in desc.use" :key="act">
+              {{ act }}
+            </li>
+          </div>
+        </div>
+        <el-button
+          title="Help"
+          :disabled="!dataLoaded"
+          icon="el-icon-question"
+          circle
+        />
+      </el-tooltip>
+
+      <div class="dropBox0">
+        <div id="dropBox"></div>
+      </div>
     </div>
-    <div id="layerGroup0" class="layerGroup">
-      <div id="dropBox"></div>
-    </div>
-    <div class="legend md-caption">
-      <p>
-        Powered by
-        <a href="https://github.com/ivmartel/dwv" title="dwv on github">dwv</a>
-        {{ versions.dwv }} and
-        <a href="https://github.com/vuejs/vue" title="vue on github">Vue.js</a>
-        {{ versions.vue }}
-      </p>
+
+    <div id="layerGroup0"
+      @mouseover="mouseHover(true)"
+      @mouseout="mouseHover(false)"
+    ></div>
+
+    <!-- dicom tags table-->
+    <div class="tags-table">
+      <tagsTable
+        v-if="metaData !== null"
+        :tagsData="metaData"
+        :instance="instanceNumber"
+        v-on:instanceNumber="onChangeInstance"
+        @mouseover="mouseHover(true)"
+        @mouseout="mouseHover(false)"
+      />
     </div>
   </div>
 </template>
 
 <script>
 // import
+import axios from 'axios'
 import Vue from 'vue'
-import MdButton from 'vue-material'
+import {
+  Progress,
+  Popover,
+  Checkbox,
+  CheckboxGroup,
+  Button,
+  Tooltip
+} from 'element-ui'
+import 'element-ui/lib/theme-chalk/index.css'
+import lang from 'element-ui/lib/locale/lang/en'
+import locale from 'element-ui/lib/locale'
+
+locale.use(lang)
+Vue.use(Progress)
+Vue.use(Popover)
+Vue.use(Checkbox)
+Vue.use(CheckboxGroup)
+Vue.use(Button)
+Vue.use(Tooltip)
+
+// import
 import dwv from 'dwv'
 import tagsTable from './tags-table'
 
-Vue.use(MdButton)
-
 // gui overrides
 
-// Image decoders (for web workers)
-dwv.image.decoderScripts = {
-  jpeg2000: 'assets/dwv/decoders/pdfjs/decode-jpeg2000.js',
-  'jpeg-lossless': 'assets/dwv/decoders/rii-mango/decode-jpegloss.js',
-  'jpeg-baseline': 'assets/dwv/decoders/pdfjs/decode-jpegbaseline.js',
-  rle: 'assets/dwv/decoders/dwv/decode-rle.js'
+/**
+ * Append a layer div in the root 'dwv' one.
+ *
+ * @param {string} id The id of the layer.
+ */
+const addLayerGroup = (id) => {
+  const layerDiv = document.createElement('div')
+  layerDiv.id = id
+  layerDiv.className = 'layerGroup'
+  const root = document.getElementById('layerGroup0')
+  root.appendChild(layerDiv)
+}
+
+/**
+ * Create simple view config(s).
+ *
+ * @returns {object} The view config.
+ */
+const prepareAndGetSimpleDataViewConfig = () => {
+  // clean up
+  const dwvDiv = document.getElementById('layerGroup0')
+  dwvDiv.innerHTML = ''
+  // add divs
+  addLayerGroup('layerGroupACS')
+  return {'*': [{divId: 'layerGroupACS'}]}
+}
+
+/**
+ * Create MPR view config(s).
+ *
+ * @returns {object} The view config.
+ */
+const prepareAndGetMPRDataViewConfig = () => {
+  // clean up
+  const dwvDiv = document.getElementById('layerGroup0')
+  dwvDiv.innerHTML = ''
+  // add divs
+  addLayerGroup('layerGroupA')
+  addLayerGroup('layerGroupC')
+  addLayerGroup('layerGroupS')
+  return {
+    '*': [
+      {
+        divId: 'layerGroupA',
+        orientation: 'axial'
+      },
+      {
+        divId: 'layerGroupC',
+        orientation: 'coronal'
+      },
+      {
+        divId: 'layerGroupS',
+        orientation: 'sagittal'
+      }
+    ]
+  }
 }
 
 export default {
@@ -86,48 +218,130 @@ export default {
   },
   data: function () {
     let res = {
-      versions: {
-        dwv: dwv.getVersion(),
-        vue: Vue.version
-      },
       dwvApp: null,
       tools: {
         Scroll: {},
         ZoomAndPan: {},
         WindowLevel: {},
-        Draw: {
-          options: ['Ruler']
-        }
+        // Draw: {
+        //   options: ['Ruler']
+        // }
       },
-
+      mode: 0,
+      dataViewConfigs: null,
+      viewOnFirstLoadItem: true,
       selectedTool: 'Select Tool',
       loadProgress: 0,
       dataLoaded: false,
       metaData: null,
       orientation: undefined,
-      showDicomTags: false,
       dropboxDivId: 'dropBox',
       dropboxClassName: 'dropBox',
       borderClassName: 'dropBoxBorder',
-      hoverClassName: 'hover'
+      hoverClassName: 'hover',
+      checkAll: true,
+      checkedBinders: ['WindowLevel', 'Position', 'Zoom', 'Offset', 'Opacity'],
+      binders: ['WindowLevel', 'Position', 'Zoom', 'Offset', 'Opacity'],
+      isIndeterminate: false,
+      viewSize: 1,
+      pixelSize: [250, 500, 750],
+      loadFromOrthanc: false,
+      dicom: [],
+      instanceNumber: 1,
+      helpInfo: [
+        {
+          name: '*Scroll',
+          info: 'Toggle instances',
+          use: [
+            'Mouse wheel scrolls over the image',
+            'Mouse click on the image to drag up and down'
+          ],
+        },
+        {
+          name: '*ZoomAndPan',
+          info: 'Drag, zoom in and out',
+          use: [
+            'Mouse wheel scrolls over the image',
+            'Mouse click on the image to drag it'
+          ],
+        },
+        {
+          name: '*WindowLevel',
+          info: 'Toggle Contrast',
+          use: [
+            'Mouse click on the image to drag up, down, left and right'
+          ],
+        },
+        {
+          name: 'Binder',
+          info: 'Active in MPR mode',
+          use: [
+            'Select WindowLevel/Position/Zoom/Offset/Opacity'
+          ],
+        },
+        {
+          name: 'Reset',
+          info: 'Reset image to default status',
+        },
+        {
+          name: 'Toggle Orientation',
+          info: 'Active in single mode, toggle coronal/sagittal/axial',
+        },
+        {
+          name: 'Mode',
+          info: 'Toggle between single and MPR mode',
+        },
+        {
+          name: 'Size',
+          info: 'Toggle image size',
+        },
+      ],
     }
     res.toolNames = Object.keys(res.tools)
     return res
   },
+  created() {
+    if (window.location.pathname !== '/') {
+      this.loadFromOrthanc = true
+    }
+  },
   mounted() {
+    // Image decoders (for web workers)
+    dwv.image.decoderScripts = {
+      jpeg2000: 'assets/dwv/decoders/pdfjs/decode-jpeg2000.js',
+      'jpeg-lossless': 'assets/dwv/decoders/rii-mango/decode-jpegloss.js',
+      'jpeg-baseline': 'assets/dwv/decoders/pdfjs/decode-jpegbaseline.js',
+      rle: 'assets/dwv/decoders/dwv/decode-rle.js'
+    }
+    if (this.mode === 0) {
+      // simplest: one layer group
+      this.dataViewConfigs = prepareAndGetSimpleDataViewConfig()
+    } else if (this.mode === 1) {
+      // MPR
+      this.viewOnFirstLoadItem = false
+      this.dataViewConfigs = prepareAndGetMPRDataViewConfig()
+    }
+    // app config
+    const config = {
+      dataViewConfigs: this.dataViewConfigs,
+      tools: this.tools,
+      viewOnFirstLoadItem: this.viewOnFirstLoadItem
+    }
     // create app
     this.dwvApp = new dwv.App()
     // initialise app
-    this.dwvApp.init({
-      dataViewConfigs: {'*': [{divId: 'layerGroup0'}]},
-      tools: this.tools
-    })
+    this.dwvApp.init(config)
     // handle load events
     let nLoadItem = null
     let nReceivedLoadError = null
     let nReceivedLoadAbort = null
     let isFirstRender = null
     this.dwvApp.addEventListener('loadstart', (/*event*/) => {
+      // load to display in small size if not enough width
+      // else display in medium by default
+      if (window.innerWidth < 500) {
+        this.onChangeViewSize(2)
+      }
       // reset flags
       this.dataLoaded = false
       nLoadItem = 0
@@ -140,22 +354,13 @@ export default {
     this.dwvApp.addEventListener('loadprogress', event => {
       this.loadProgress = event.loaded
     })
-    this.dwvApp.addEventListener('renderend', (/*event*/) => {
-      if (isFirstRender) {
-        isFirstRender = false
-        // available tools
-        let selectedTool = 'ZoomAndPan'
-        if (this.dwvApp.canScroll()) {
-          selectedTool = 'Scroll'
-        }
-        this.onChangeTool(selectedTool)
-      }
-    })
     this.dwvApp.addEventListener('load', (/*event*/) => {
-      // set dicom tags
-      this.metaData = this.dwvApp.getMetaData(0)
-      // set data loaded flag
-      this.dataLoaded = true
+      if (!this.viewOnFirstLoadItem) {
+        // render data
+        for (let i = 0; i < this.dwvApp.getNumberOfLoadedData(); ++i) {
+          this.dwvApp.render(i)
+        }
+      }
     })
     this.dwvApp.addEventListener('loadend', (/*event*/) => {
       if (nReceivedLoadError) {
@@ -171,6 +376,20 @@ export default {
         alert('Load was aborted.')
         this.showDropbox(true)
       }
+      // set dicom tags
+      this.metaData = this.dwvApp.getMetaData(0)
+      // set data loaded flag
+      this.dataLoaded = true
+
+      if (isFirstRender) {
+        isFirstRender = false
+        // available tools
+        let selectedTool = 'ZoomAndPan'
+        if (this.dwvApp.canScroll()) {
+          selectedTool = 'Scroll'
+        }
+        this.onChangeTool(selectedTool)
+      }
     })
     this.dwvApp.addEventListener('loaditem', (/*event*/) => {
       ++nLoadItem
@@ -182,44 +401,54 @@ export default {
     this.dwvApp.addEventListener('loadabort', (/*event*/) => {
       ++nReceivedLoadAbort
     })
-
+    this.dwvApp.addEventListener('positionchange', event => {
+      this.instanceNumber = event.value[0][2]
+    })
     // handle key events
     this.dwvApp.addEventListener('keydown', event => {
       this.dwvApp.defaultOnKeydown(event)
     })
-    // handle window resize
-    window.addEventListener('resize', this.dwvApp.onResize)
-
-    // setup drop box
-    this.setupDropbox()
-
+    // // handle window resize
+    // window.addEventListener('resize', function () {
+    //   this.dwvApp.onResize()
+    // })
+    if (this.loadFromOrthanc) {
+      // load dicom files from url path
+      this.setupDICOMPath()
+    } else {
+      // setup drop box
+      this.setupDropbox()
+    }
     // possible load from location
     dwv.utils.loadFromUri(window.location.href, this.dwvApp)
   },
   methods: {
+    mouseHover: function (hover) {
+      if (hover) {
+        document.body.style.overflow = 'hidden'
+      } else {
+        document.body.style.overflow = ''
+      }
+    },
     getToolIcon: function (tool) {
       var res
       if (tool === 'Scroll') {
-        res = 'menu'
+        res = 'el-icon-sort'
       } else if (tool === 'ZoomAndPan') {
-        res = 'search'
+        res = 'el-icon-thumb'
       } else if (tool === 'WindowLevel') {
-        res = 'contrast'
-      } else if (tool === 'Draw') {
-        res = 'straighten'
+        res = 'el-icon-s-operation'
+      // } else if (tool === 'Draw') {
+      //   res = 'el-icon-edit'
       }
       return res
     },
     onChangeTool: function (tool) {
       this.selectedTool = tool
-      for (const t of this.toolNames) {
-        this.activateTool(t, false)
-      }
-      this.activateTool(tool, true)
       this.dwvApp.setTool(tool)
-      if (tool === 'Draw') {
-        this.onChangeShape(this.tools.Draw.options[0])
-      }
+      // if (tool === 'Draw') {
+      //   this.onChangeShape(this.tools.Draw.options[0])
+      // }
     },
     canRunTool: function (tool) {
       let res
@@ -232,12 +461,31 @@ export default {
       }
       return res
     },
-    activateTool: function (tool, flag) {
+    activateTool: function (tool) {
+      const flag = tool === this.selectedTool ? true : false
       if (flag) {
-        document.getElementById(tool).classList.add('active')
-      } else {
-        document.getElementById(tool).classList.remove('active')
+        return 'active'
       }
+    },
+    onChangeBinder: function () {
+      const binders = []
+      // add all binders when use mpr view
+      for (var b = 0; b < this.checkedBinders.length; ++b) {
+        binders.push(new dwv.gui[this.checkedBinders[b] + 'Binder'])
+      }
+      this.dwvApp.setLayerGroupsBinders(binders)
+    },
+    handleCheckAllChange(val) {
+      this.checkedBinders = val ? this.binders : []
+      this.isIndeterminate = false
+      this.onChangeBinder()
+    },
+    handleCheckedBindersChange(value) {
+      let checkedCount = value.length
+      this.checkAll = checkedCount === this.binders.length
+      this.isIndeterminate =
+        checkedCount > 0 && checkedCount < this.binders.length
+      this.onChangeBinder()
     },
     toggleOrientation: function () {
       if (typeof this.orientation !== 'undefined') {
@@ -256,7 +504,7 @@ export default {
       const config = {
         '*': [
           {
-            divId: 'layerGroup0',
+            divId: 'layerGroupACS',
             orientation: this.orientation
           }
         ]
@@ -266,14 +514,114 @@ export default {
       for (let i = 0; i < this.dwvApp.getNumberOfLoadedData(); ++i) {
         this.dwvApp.render(i)
       }
+      this.onChangeInstance(this.instanceNumber)
     },
-    onChangeShape: function (shape) {
-      if (this.dwvApp && this.selectedTool === 'Draw') {
-        this.dwvApp.setToolFeatures({shapeName: shape})
-      }
-    },
+    // onChangeShape: function (shape) {
+    //   if (this.dwvApp && this.selectedTool === 'Draw') {
+    //     this.dwvApp.setToolFeatures({shapeName: shape})
+    //   }
+    // },
     onReset: function () {
       this.dwvApp.resetDisplay()
+    },
+    onChangeDataView: function () {
+      if (this.mode === 0) {
+        // MPR
+        this.dataViewConfigs = prepareAndGetMPRDataViewConfig()
+        this.mode = 1
+      } else if (this.mode === 1) {
+        // simplest: one layer group
+        this.dataViewConfigs = prepareAndGetSimpleDataViewConfig()
+        this.mode = 0
+      }
+      // set config
+      this.dwvApp.setDataViewConfig(this.dataViewConfigs)
+      // render data
+      for (var i = 0; i < this.dwvApp.getNumberOfLoadedData(); ++i) {
+        this.dwvApp.render(i)
+      }
+      this.onChangeBinder()
+      this.onChangeViewSize(this.viewSize - 1 < 0 ? 2 : this.viewSize - 1)
+      this.onChangeInstance(this.instanceNumber)
+    },
+    setupViewSize: function (size) {
+      const layer = document.querySelectorAll('.layerGroup')
+      for (let i = 0; i < layer.length; i++) {
+        layer[i].setAttribute('style', `height: ${size}px; width: ${size}px`)
+      }
+      const canvas = document.querySelectorAll('canvas')
+      for (let i = 0; i < canvas.length; i++) {
+        canvas[i].setAttribute('style', `height: ${size}px; width: ${size}px`)
+      }
+    },
+    setupViewDirection: function (width, size) {
+      const rowViewSize = (size + 40) * 3
+      if (this.mode === 1) {
+        const rootLayer = document.querySelector('#layerGroup0')
+        if (width >= rowViewSize) {
+          rootLayer.style.flexDirection = 'row'
+        } else if (width < rowViewSize) {
+          rootLayer.style.flexDirection = 'column'
+        }
+      }
+    },
+    onChangeViewSize: function (view) {
+      const width = document.documentElement.clientWidth
+      let displaySize
+      const small = this.pixelSize[0]
+      const median = this.pixelSize[1]
+      const large = this.pixelSize[2]
+      if (view === 0) {
+        if (width < median) {
+          return
+        }
+        displaySize = median
+        this.viewSize = 1
+      } else if (view === 1) {
+        if (width < large) {
+          return
+        }
+        displaySize = large
+        this.viewSize = 2
+      } else if (view === 2) {
+        displaySize = small
+        this.viewSize = 0
+      }
+      this.setupViewDirection(width, displaySize)
+      this.setupViewSize(displaySize)
+    },
+    onChangeInstance: function (index) {
+      const viewController = this.dwvApp
+        .getActiveLayerGroup()
+        .getActiveViewLayer()
+        .getViewController()
+      const currentIndex = viewController
+        .getCurrentIndex()
+        .getValues()
+      viewController.setCurrentIndex(
+        new dwv.math.Index([currentIndex[0], currentIndex[1], index]))
+    },
+    setupDICOMPath: async function () {
+      const queryPath = `${process.env.VUE_APP_QUERY}/instance`
+      const payload = {
+        'study':
+          // replace by studyInstanceUID
+          '1.3.6.1.4.1.14519.5.2.1.186051521067863971269584893740842397538',
+        'series':
+          // replace by seriesInstanceUID
+          '1.3.6.1.4.1.14519.5.2.1.175414966301645518238419021688341658582'
+      }
+      await axios.post(queryPath, payload)
+        .then((res)=> {
+          res.data.forEach((id) => {
+            const dicomPath = `${process.env.VUE_APP_QUERY}/dicom/export/${id}`
+            this.dicom.push(dicomPath)
+          })
+        })
+      this.onUrl()
+    },
+    onUrl: function () {
+      this.dwvApp.loadURLs(this.dicom)
     },
     setupDropbox() {
       this.showDropbox(true)
@@ -309,7 +657,7 @@ export default {
       if (!box) {
         return
       }
-      const layerDiv = document.getElementById('layerGroup0')
+      const boxDiv = document.getElementById('dropBox')
 
       if (show) {
         // reset css class
@@ -323,10 +671,10 @@ export default {
         // show box
         box.setAttribute('style', 'display:initial')
         // stop layer listening
-        if (layerDiv) {
-          layerDiv.removeEventListener('dragover', this.defaultHandleDragEvent)
-          layerDiv.removeEventListener('dragleave', this.defaultHandleDragEvent)
-          layerDiv.removeEventListener('drop', this.onDrop)
+        if (boxDiv) {
+          boxDiv.removeEventListener('dragover', this.defaultHandleDragEvent)
+          boxDiv.removeEventListener('dragleave', this.defaultHandleDragEvent)
+          boxDiv.removeEventListener('drop', this.onDrop)
         }
         // listen to box events
         box.addEventListener('dragover', this.onBoxDragOver)
@@ -344,10 +692,10 @@ export default {
         box.removeEventListener('dragleave', this.onBoxDragLeave)
         box.removeEventListener('drop', this.onDrop)
         // listen to layer events
-        if (layerDiv) {
-          layerDiv.addEventListener('dragover', this.defaultHandleDragEvent)
-          layerDiv.addEventListener('dragleave', this.defaultHandleDragEvent)
-          layerDiv.addEventListener('drop', this.onDrop)
+        if (boxDiv) {
+          boxDiv.addEventListener('dragover', this.defaultHandleDragEvent)
+          boxDiv.addEventListener('dragleave', this.defaultHandleDragEvent)
+          boxDiv.addEventListener('drop', this.onDrop)
         }
       }
     }
@@ -359,10 +707,13 @@ export default {
 <style scoped>
 #dwv {
   font-family: Arial, Helvetica, sans-serif;
-  height: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .button-row {
+  width: 80%;
   text-align: center;
   padding: 5px;
 }
@@ -370,39 +721,63 @@ export default {
 #dwv button {
   margin: 2px;
 }
-#dwv button.active{
-  background-color: var(--md-theme-default-accent);
+
+.active {
+background-color: black;
+}
+
+.binders-group {
+  display: flex;
+  flex-direction: column;
 }
 
 /* Layers */
-.layerGroup {
-  position: relative;
-  padding: 0;
+#layerGroup0 {
   display: flex;
-  justify-content: center;
-  height: 90%;
+  flex-direction: row;
+  margin: 20px;
+  border: 1px solid black;
 }
-.layer {
-  position: absolute;
-  pointer-events: none;
+::v-deep .layerGroup {
+  height: 500px;
+  width: 500px;
+  margin: 10px;
+  /* allow child centering */
+  position: relative;
+}
+::v-deep canvas {
+  /* avoid parent auto-resize */
+  vertical-align: middle;
 }
 
 /* drag&drop */
+.dropBox0 {
+  display: flex;
+}
 .dropBox {
   margin: auto;
-  text-align: center;
-  vertical-align: middle;
-  width: 50%; height: 75%;
+  width: 50%;
+  height: 75%;
 }
 .dropBoxBorder {
-  border: 5px dashed rgba(68, 138, 255, 0.38); }
+  border: 5px dashed rgba(68, 138, 255, 0.38);
+}
 .dropBoxBorder.hover {
-  border: 5px dashed var(--md-theme-default-primary); }
-</style>
-<!-- non "scoped" style -->
-<style>
-.layer {
-  position: absolute;
-  pointer-events: none;
+  border: 5px dashed var(--md-theme-default-primary);
+}
+
+/* Tags table */
+.tags-table {
+  width: 60%;
+  margin-bottom: 50px;
+}
+
+/* Element ui */
+::v-deep .el-progress {
+  width: 100%;
+}
+::v-deep .el-button {
+  height: 50px;
+  width: 50px;
 }
 </style>
